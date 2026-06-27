@@ -1,0 +1,24 @@
+Router,Endpoint,Mô tả,Method,Input (req.body / query / params),Output (res.body),Middleware,Errors (Unhappy path),Notes,Packages,Test
+/api/auth,,XÁC THỰC NHÂN VIÊN CRM,,,,,,,,
+,/login,Đăng nhập hệ thống CRM,POST,username: stringpassword: string,"access_token: stringtoken_type: ""bearer""user: Object",,- 401: Sai tài khoản/mật khẩu- 400: Thiếu trường dữ liệu,Trả về JWT Token để frontend lưu vào LocalStorage/Cookie.,"passlib, jose",
+,/me,Lấy thông tin nhân viên đang đăng nhập,GET,Bearer Token (trong Header),"{ id, username, role, full_name }",Auth,- 401: Token hết hạn/Không hợp lệ,Dùng để verify session mỗi khi load lại trang React.,,
+/api/customers,,QUẢN LÝ DỮ LIỆU KHÁCH HÀNG,,,,,,,,
+,/,"Lấy danh sách khách hàng (Có phân trang, lọc)",GET,"Query:page: int (default 1)limit: int (default 50)search: string (CustomerID/City)risk: ""high""|""low""","{ total: int, page: int, total_pages: int, data: Customer[] }",Auth,,Hỗ trợ tìm kiếm theo ID khách hàng hoặc Thành phố. Lọc theo nhóm rủi ro Churn.,sqlalchemy,
+,/{customer_id},Lấy chi tiết 1 hồ sơ khách hàng,GET,"Params:customer_id: string (VD: ""3668-QPYBK"")",Customer (Chi tiết 33 trường),Auth,- 404: Không tìm thấy CustomerID,,,
+,/,Tạo hồ sơ khách hàng mới (Đăng ký dịch vụ),POST,Body: { CustomerPayload }(Xem cấu trúc Payload chi tiết ở dưới),"{ message: ""Created"", data: Customer, predicted_churn_score: float }",Auth,- 409: CustomerID đã tồn tại- 422: Validate data sai (Thiếu trường bắt buộc),Trigger nội bộ: Gọi hàm AI predict ngay khi nhận data -> Tính churn_score -> Lưu tất cả vào Database MySQL.,pydantic,
+,/{customer_id},"Cập nhật hồ sơ (Đổi gói cước, dịch vụ)",PUT,Body: { CustomerPayload } (Có thể gửi 1 phần),"{ message: ""Updated"", data: Customer }",Auth,- 404: Không tìm thấy CustomerID,Trigger nội bộ: Nếu đổi dịch vụ/hợp đồng -> Phải tính toán lại churn_score mới.,,
+,/{customer_id}/churn,Cập nhật trạng thái Churn thực tế,PATCH,"Body:churn_label: ""Yes"" | ""No""churn_reason: string","{ message: ""Status Updated"" }",Auth,"- 404: Không tìm thấy user- 400: Thiếu Churn Reason khi chọn ""Yes""",Dùng khi khách hàng thực sự huỷ dịch vụ (Ground truth data). Để mốt lấy data này train lại model.,,
+/api/predict,,DỰ ĐOÁN AI ĐỘC LẬP,,,,,,,,
+,/evaluate,AI dự đoán rủi ro (Simulate / Không lưu DB),POST,"Body: Các trường dịch vụ (tenure_months, contract, monthly_charges, internet_service...)","{ churn_prediction: 0|1, churn_probability: float, risk_level: string }",Auth,- 422: Thiếu data cần thiết cho Model chạy,"Dùng cho tính năng ""Mô phỏng/Tư vấn"": Nhập thử thông số gói cước xem tỉ lệ rời đi có giảm không.","joblib, scikit-learn, pandas",
+/api/dashboard,,THỐNG KÊ GIAO DIỆN CHÍNH,,,,,,,,
+,/summary,Số liệu tổng quan (Các thẻ KPI trên cùng),GET,,"{ total_customers: int, current_churn_rate: float, high_risk_count: int, total_revenue: float }",Auth,,Dùng SQLAlchemy đếm và tính toán nhanh trực tiếp từ MySQL.,,
+,/charts/churn-by-contract,Dữ liệu biểu đồ Churn theo loại Hợp đồng,GET,,"[{ name: ""Month-to-month"", churned: 1655, retained: 2220 }, ...]",Auth,,Trả về mảng JSON chuẩn để vẽ biểu đồ bằng thư viện Recharts (ReactJS).,,
+
+Router,Endpoint,Mô tả,Method,Input (req.body / query),Output (res.body),Middleware,Errors (Unhappy path),Notes
+/api/users,,QUẢN LÝ NHÂN SỰ & PHÂN QUYỀN,,,,,,
+,/,Lấy danh sách tài khoản nhân viên,GET,"page, limit, role (Lọc theo chức vụ)","{ data: User[], total: int }","Auth + Khóa Manager, Admin",403: Staff không có quyền xem list này.,Manager chỉ xem được Staff. Admin xem được tất cả. Không trả về hashed_password.
+,/,Tạo tài khoản nhân viên / quản lý mới,POST,"username, password, full_name, email, role","{ message: ""User created"", data: User }",Auth + Khóa Admin,409: Username/Email đã tồn tại.403: Không đủ quyền.,Chỉ Admin mới có quyền cấp tài khoản nội bộ cho nhân viên mới. (Mật khẩu được băm trước khi lưu).
+,/{user_id},Lấy chi tiết thông tin 1 nhân sự,GET,Params: user_id,User,Auth + Check Quyền,404: Không tìm thấy User.,Manager được xem hồ sơ Staff.
+,/{user_id}/status,Khóa/Mở khóa tài khoản nhân viên,PATCH,is_active: boolean,"{ message: ""Status updated"" }",Auth + Khóa Admin,403: Không đủ quyền khóa tài khoản.,Dùng khi nhân viên nghỉ việc (Soft delete).
+,/me/password,Nhân viên tự đổi mật khẩu,PUT,"old_password, new_password","{ message: ""Password updated"" }",Auth (Tất cả),400: Mật khẩu cũ sai.,Bất kỳ ai đăng nhập cũng có quyền tự đổi mật khẩu của mình.
+

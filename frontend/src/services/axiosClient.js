@@ -12,4 +12,18 @@ axiosClient.interceptors.request.use((config) => {
   return config;
 });
 
+axiosClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+    if (error.response?.status === 403) {
+      window.location.href = '/unauthorized';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosClient;

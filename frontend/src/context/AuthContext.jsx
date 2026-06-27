@@ -5,6 +5,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('access_token'));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (token) {
@@ -14,7 +15,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
-  const value = useMemo(() => ({ user, setUser, token, setToken }), [user, token]);
+  useEffect(() => {
+    setLoading(false);
+  }, []);
+
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+  };
+
+  const value = useMemo(
+    () => ({ user, setUser, token, setToken, logout, loading }),
+    [user, token, loading]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

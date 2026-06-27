@@ -1,4 +1,5 @@
 import logging
+import logging.config
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +12,11 @@ from app.db.base import Base
 from app.db.database import SessionLocal, engine
 from app.models.user import User
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Telco CRM")
@@ -33,7 +38,10 @@ app.include_router(users.router)
 @app.on_event("startup")
 def startup_event() -> None:
     try:
+        logger.info("Starting Telco CRM application...")
         Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/verified")
+        
         db = SessionLocal()
         try:
             if not get_user_by_username(db, settings.DEFAULT_ADMIN_USERNAME):
@@ -47,12 +55,17 @@ def startup_event() -> None:
                 )
                 db.add(admin)
                 db.commit()
+                logger.info(f"Default admin user created: {settings.DEFAULT_ADMIN_USERNAME}")
+            else:
+                logger.debug("Admin user already exists")
         finally:
             db.close()
+        
+        logger.info("Telco CRM application ready!")
     except Exception as exc:
-        logger.warning("Database initialization skipped: %s", exc)
+        logger.error(f"Error during startup: {exc}", exc_info=True)
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "telco-crm"}

@@ -1,193 +1,155 @@
 #!/usr/bin/env python
-"""
-Machine Learning Model Training Script
-Trains a Random Forest classifier on Telco Customer Churn data
-"""
-
 import argparse
 import os
 import pickle
+import numpy as np
+import pandas as pd
+from pathlib import Path
+from sklearn.model_selection import train_test_split
+
+import sys
 from pathlib import Path
 
-import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import classification_report, confusion_matrix
+ROOT = Path(__file__).resolve().parent.parent
+BACKEND = ROOT / "backend"
 
+sys.path.insert(0, str(BACKEND))
 
-def load_data(csv_path):
-    """Load and preprocess customer data"""
-    print(f"Loading data from {csv_path}...")
-    df = pd.read_csv(csv_path)
-    
-    print(f"Dataset shape: {df.shape}")
-    print(f"Columns: {list(df.columns)}")
-    
-    return df
+from preprocessing import preprocess_data
+from app.services.Forest import RandomForest
 
+def train_and_save_model(data_path: str, output_path: str):
+    print("1. Đang đọc và tiền xử lý dữ liệu...")
+    
+    # 1. Gọi file preprocessing của bạn
+    # Lưu ý: file preprocessing.py của bạn đã tự động xóa các cột leakage ('Churn Value', 'Churn Score',...) 
+    df_final, le_target, target_col = preprocess_data(data_path)
+    
+    # 2. Tách X và y
+    y_df = df_final[target_col]
+    X_df = df_final.drop(columns=[target_col])
+    
+    X = X_df.values
+    y = y_df.values
+    feature_names = list(X_df.columns)
 
-def preprocess_data(df):
-    """Preprocess the dataset"""
-    print("Preprocessing data...")
-    
-    # Expected features for the model
-    feature_columns = [
-        'tenure_months', 'monthly_charges', 'total_charges', 'partner',
-        'dependents', 'contract', 'internet_service', 'paperless_billing'
-    ]
-    
-    # Ensure all required columns exist
-    missing_cols = [col for col in feature_columns if col not in df.columns]
-    if missing_cols:
-        print(f"Warning: Missing columns {missing_cols}, will use available columns")
-        feature_columns = [col for col in feature_columns if col in df.columns]
-    
-    X = df[feature_columns].copy()
-    
-    # Determine target column (churn_label or Churn)
-    if 'churn_label' in df.columns:
-        y = (df['churn_label'] == 'Yes').astype(int)
-    elif 'Churn' in df.columns:
-        y = (df['Churn'] == 'Yes').astype(int)
-    else:
-        raise ValueError("Dataset must contain 'churn_label' or 'Churn' column")
-    
-    print(f"Features: {list(X.columns)}")
-    print(f"Target distribution: {y.value_counts().to_dict()}")
-    
-    # Encode categorical features
-    for col in ['partner', 'dependents', 'contract', 'internet_service', 'paperless_billing']:
-        if col in X.columns:
-            X[col] = (X[col] == 'Yes').astype(int)
-    
-    # Handle missing values
-    X = X.fillna(0)
-    
-    # Convert to numeric
-    X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
-    
-    print(f"Processed features shape: {X.shape}")
-    print(f"Features: {X.dtypes}")
-    
-    return X, y
+    print(f"Kích thước tập dữ liệu: X = {X.shape}, y = {y.shape}")
 
-
-def train_model(X, y, test_size=0.2, random_state=42, n_estimators=100):
-    """Train Random Forest model"""
-    print(f"Training Random Forest with {n_estimators} estimators...")
-    
-    # Split data
+    # 3. Chia tập dữ liệu (80% Huấn luyện, 20% Kiểm tra)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
+        X, y, test_size=0.2, random_state=42, stratify=y
     )
     
-    print(f"Training set size: {len(X_train)}")
-    print(f"Test set size: {len(X_test)}")
+    print(f"Số lượng mẫu huấn luyện: {X_train.shape[0]}")
+    print(f"Số lượng mẫu kiểm tra: {X_test.shape[0]}\n")
+
+    # 4. Undersampling
+    print("Đang cân bằng dữ liệu bằng phương pháp Undersampling...")
+    idx_class_0 = np.where(y_train == 0)[0]
+    idx_class_1 = np.where(y_train == 1)[0]
     
-    # Train model
-    model = RandomForestClassifier(
-        n_estimators=n_estimators,
-        max_depth=15,
-        min_samples_split=10,
-        random_state=random_state,
-        n_jobs=-1
+    np.random.seed(42)
+    # Lấy 3000 mẫu lớp 0
+    idx_class_0_downsampled = np.random.choice(idx_class_0, size=3000, replace=False)
+    
+    downsampled_indices = np.concatenate([idx_class_0_downsampled, idx_class_1])
+    np.random.shuffle(downsampled_indices)
+    
+    X_train_downsampled = X_train[downsampled_indices]
+    y_train_downsampled = y_train[downsampled_indices]
+    
+    print(f"Kích thước tập Train cũ : Lớp 0 có {len(idx_class_0)}, Lớp 1 có {len(idx_class_1)}")
+    print(f"Kích thước tập Train mới: Lớp 0 có {np.sum(y_train_downsampled == 0)}, Lớp 1 có {np.sum(y_train_downsampled == 1)}\n")
+
+    # 5. Khởi tạo và huấn luyện mô hình với tham số của bạn
+    print("2. Đang huấn luyện mô hình RandomForest...")
+    rf_model = RandomForest(
+        n_estimators=200,    
+        max_depth=7,        
+        max_feature=None,     
+        min_sample=9,        
+        random_state=42,
+        class_weight={0: 1, 1: 1.2} 
     )
-    model.fit(X_train, y_train)
-    
-    # Evaluate
-    train_score = model.score(X_train, y_train)
-    test_score = model.score(X_test, y_test)
-    
-    print(f"\nModel Performance:")
-    print(f"Training Accuracy: {train_score:.4f}")
-    print(f"Testing Accuracy: {test_score:.4f}")
-    
-    # Feature importance
-    feature_importance = pd.DataFrame({
-        'feature': X.columns,
-        'importance': model.feature_importances_
-    }).sort_values('importance', ascending=False)
-    
-    print(f"\nTop 5 Important Features:")
-    print(feature_importance.head())
-    
-    # Classification report
-    y_pred = model.predict(X_test)
-    print(f"\nClassification Report:")
-    print(classification_report(y_test, y_pred))
-    
-    return model
 
+    rf_model.fit(X_train_downsampled, y_train_downsampled)
 
-def save_model(model, model_path):
-    """Save trained model to pickle file"""
-    model_path = Path(model_path)
-    model_path.parent.mkdir(parents=True, exist_ok=True)
+    # In đặc trưng quan trọng
+    importances = rf_model.feature_importances()
+    feat_imp = pd.DataFrame({'Feature': feature_names, 'Importance': importances})
+    feat_imp = feat_imp.sort_values(by='Importance', ascending=False)
     
-    print(f"Saving model to {model_path}...")
-    with open(model_path, 'wb') as f:
-        pickle.dump(model, f)
+    print("\n--- TOP 3 ĐẶC TRƯNG QUAN TRỌNG NHẤT ---")
+    print(feat_imp.head(10))
+    print("\n--- CÁC ĐẶC TRƯNG VÔ DỤNG (NÊN XÓA BỎ) ---")
+    print(feat_imp.tail(3))
+
+    # 6. Đánh giá hiệu suất
+    print("\n" + "="*45)
+    print("3. KẾT QUẢ ĐÁNH GIÁ MÔ HÌNH TRÊN TẬP TEST")
+    print("="*45)
     
-    print(f"Model saved successfully!")
+    acc = rf_model.accuracy(X_test, y_test)
+    prec = rf_model.precision(X_test, y_test)
+    rec = rf_model.recall(X_test, y_test)
+    f1 = rf_model.f1_score(X_test, y_test)
+    cm = rf_model.confusion_matrix(X_test, y_test)
+    oob_acc = rf_model.oob_score(X_train_downsampled, y_train_downsampled)
+    
+    print(f"Accuracy  (Độ chính xác tổng thể): {acc:.4f}")
+    print(f"Precision (Độ chuẩn xác)         : {prec:.4f}")
+    print(f"Recall    (Độ bao phủ)           : {rec:.4f}")
+    print(f"F1-Score                         : {f1:.4f}")
+    print(f"OOB Accuracy (Độ chính xác OOB) : {oob_acc:.4f}")
+    
+    print("\nConfusion Matrix (Ma trận nhầm lẫn):")
+    print("              Dự đoán 0   Dự đoán 1")
+    print(f"Thực tế 0:      {cm[0][0]}         {cm[0][1]}")
+    print(f"Thực tế 1:      {cm[1][0]}         {cm[1][1]}")
+
+    # 7. Đóng gói và lưu mô hình
+    print("\n" + "="*45)
+    print("4. ĐANG LƯU MÔ HÌNH...")
+    
+    saved_package = {
+        'model': rf_model,
+        'X_test': X_test,
+        'y_test': y_test,
+        'feature_names': feature_names
+    }
+    
+    out_path = Path(output_path)
+    # Tự động tạo thư mục ml_models nếu chưa có
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(out_path, 'wb') as file:
+        pickle.dump(saved_package, file)
+        
+    print(f"Đã Lưu mô hình thành công vào file '{out_path}'.")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Train ML model for Telco Customer Churn prediction"
+    parser = argparse.ArgumentParser(description="Train custom Random Forest model for Churn")
+    parser.add_argument(
+        '--data', 
+        type=str, 
+        default='backend/ml_models/Telco_customer_churn.xlsx', 
+        help='Đường dẫn tới file dữ liệu gốc'
     )
     parser.add_argument(
-        '--data',
-        type=str,
-        required=True,
-        help='Path to CSV file with customer data'
-    )
-    parser.add_argument(
-        '--output',
-        type=str,
-        default='ml_models/random_forest_churn.pkl',
-        help='Output path for trained model'
-    )
-    parser.add_argument(
-        '--estimators',
-        type=int,
-        default=100,
-        help='Number of trees in Random Forest'
-    )
-    parser.add_argument(
-        '--test-size',
-        type=float,
-        default=0.2,
-        help='Test set size (0.0-1.0)'
+        '--output', 
+        type=str, 
+        default='backend/ml_models/rf_churn_model.pkl', 
+        help='Đường dẫn lưu file pkl'
     )
     
     args = parser.parse_args()
     
-    # Validate input
     if not os.path.exists(args.data):
-        print(f"Error: Data file not found: {args.data}")
+        print(f"Lỗi: Không tìm thấy file dữ liệu tại {args.data}")
         return 1
-    
-    try:
-        # Load and process data
-        df = load_data(args.data)
-        X, y = preprocess_data(df)
         
-        # Train model
-        model = train_model(X, y, test_size=args.test_size, n_estimators=args.estimators)
-        
-        # Save model
-        save_model(model, args.output)
-        
-        print("\n✓ Training completed successfully!")
-        return 0
-        
-    except Exception as e:
-        print(f"\n✗ Error during training: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return 1
+    train_and_save_model(args.data, args.output)
 
-
-if __name__ == '__main__':
-    exit(main())
+if __name__ == "__main__":
+    main()

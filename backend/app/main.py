@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Telco CRM")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://127.0.0.1:5173",
+                   "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,7 +48,7 @@ def startup_event() -> None:
             if not get_user_by_username(db, settings.DEFAULT_ADMIN_USERNAME):
                 admin = User(
                     username=settings.DEFAULT_ADMIN_USERNAME,
-                    email="admin@telco.local",
+                    email="admin@telco.com",
                     full_name="System Administrator",
                     hashed_password=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
                     role="admin",

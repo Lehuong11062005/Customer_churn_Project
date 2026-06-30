@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional,List
 
 from pydantic import BaseModel, EmailStr
 
@@ -34,3 +34,11 @@ class PasswordUpdate(BaseModel):
 
 class UserStatusUpdate(BaseModel):
     is_active: bool
+
+class UserListResponse(BaseModel):
+    data: List[UserOut]
+    total: int
+
+class UserCreateResponse(BaseModel):
+    message: str
+    data: UserOut

@@ -1,7 +1,7 @@
 import logging
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import Dict, Any
 
 from app.api.dependencies import get_current_user, require_role
 from app.crud.crud_user import (
@@ -15,13 +15,21 @@ from app.crud.crud_user import (
 )
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.user_schema import PasswordUpdate, UserCreate, UserOut, UserStatusUpdate
+from app.schemas.user_schema import (
+    PasswordUpdate, 
+    UserCreate, 
+    UserOut, 
+    UserStatusUpdate, 
+    UserListResponse,     # Đã thêm
+    UserCreateResponse    # Đã thêm
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
-@router.get("/", response_model=dict)
+# SỬA response_model thành UserListResponse
+@router.get("/", response_model=UserListResponse)
 def list_users(
     page: int = 1,
     limit: int = 50,
@@ -36,10 +44,13 @@ def list_users(
     skip = (page - 1) * limit
     users, total = get_users(db=db, skip=skip, limit=limit, role=role)
     logger.debug(f"User list retrieved by {current_user.username} (role: {current_user.role})")
+    
+    # FastAPI sẽ tự động map 'users' qua List[UserOut]
     return {"data": users, "total": total}
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+# SỬA response_model thành UserCreateResponse
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=UserCreateResponse)
 def create_user_account(
     payload: UserCreate,
     db: Session = Depends(get_db),
@@ -51,12 +62,14 @@ def create_user_account(
     if get_user_by_email(db, payload.email):
         logger.warning(f"Attempted to create user with existing email: {payload.email}")
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already exists")
+    
     user = create_user(db, payload)
     logger.info(f"User created: {payload.username} (role: {payload.role}) by {current_user.username}")
     return {"message": "User created", "data": user}
 
 
-@router.get("/{user_id}")
+# SỬA response_model thành UserOut
+@router.get("/{user_id}", response_model=UserOut)
 def get_user_detail(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     user = get_user(db, user_id)
     if not user:
@@ -65,9 +78,12 @@ def get_user_detail(user_id: int, db: Session = Depends(get_db), current_user: U
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
     if current_user.role == "manager" and user.role == "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+    
+    # Trả về object thuần, FastAPI tự convert sang UserOut
     return user
 
 
+# (Các hàm update status và password giữ nguyên vì chỉ trả về dict chứa message đơn giản, không chứa object DB)
 @router.patch("/{user_id}/status")
 def update_status(user_id: int, payload: UserStatusUpdate, db: Session = Depends(get_db), current_user: User = Depends(require_role("admin"))):
     user = get_user(db, user_id)

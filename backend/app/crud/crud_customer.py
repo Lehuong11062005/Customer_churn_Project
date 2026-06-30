@@ -10,26 +10,17 @@ def get_customer(db: Session, customer_id: str) -> Optional[Customer]:
     return db.query(Customer).filter(Customer.customer_id == customer_id).first()
 
 
-def get_customers(
-    db: Session,
-    skip: int = 0,
-    limit: int = 50,
-    search: Optional[str] = None,
-    risk: Optional[str] = None,
-) -> Tuple[List[Customer], int]:
+def get_customers(db: Session, skip: int = 0, limit: int = 50, search: Optional[str] = None, risk: Optional[str] = None):
     query = db.query(Customer)
     if search:
         like_term = f"%{search}%"
         query = query.filter((Customer.customer_id.like(like_term)) | (Customer.city.like(like_term)))
     if risk:
         if risk == "high":
-            query = query.filter(Customer.churn_score != None)
-            query = query.filter(Customer.churn_score >= 0.7)
+            query = query.filter(Customer.churn_score != None).filter(Customer.churn_score >= 70.0)
         elif risk == "low":
-            query = query.filter(Customer.churn_score != None)
-            query = query.filter(Customer.churn_score < 0.7)
+            query = query.filter(Customer.churn_score != None).filter(Customer.churn_score < 70.0)
     return query.order_by(Customer.id).offset(skip).limit(limit).all(), query.count()
-
 
 def create_customer(db: Session, customer_data: dict) -> Customer:
     customer = Customer(**customer_data)

@@ -127,6 +127,64 @@ def train_and_save_model(data_path: str, output_path: str):
         
     print(f"Đã Lưu mô hình thành công vào file '{out_path}'.")
 
+    # thêm bước lưu các cái thồn số performan 
+    # Chuyển Feature Importance thành danh sách có tên feature
+    feature_importance = [
+        {
+            "feature": feature,
+            "importance": float(score)
+        }
+        for feature, score in zip(feature_names, importances)
+    ]
+
+    # Sắp xếp giảm dần
+    feature_importance.sort(
+        key=lambda x: x["importance"],
+        reverse=True
+    )
+    model_performance = {
+        "accuracy": float(acc),
+        "precision": float(prec),
+        "recall": float(rec),
+        "f1_score": float(f1),
+        "oob_score": float(oob_acc),
+
+        "confusion_matrix": {
+            "true_negative": int(cm[0][0]),
+            "false_positive": int(cm[0][1]),
+            "false_negative": int(cm[1][0]),
+            "true_positive": int(cm[1][1])
+        },
+
+        "feature_importance": feature_importance,
+
+        "model_information": {
+            "algorithm": "Custom Random Forest",
+            "n_estimators": rf_model.n_estimators,
+            "max_depth": rf_model.max_depth,
+            "min_sample": rf_model.min_sample,
+            "max_feature": rf_model.max_feature,
+            "random_state": rf_model.random_state,
+            "train_samples": int(X_train_downsampled.shape[0]),
+            "test_samples": int(X_test.shape[0]),
+            "feature_count": len(feature_names)
+        }
+    }
+    import json
+
+    performance_path = out_path.parent / "model_performance.json"
+
+    with open(performance_path, "w", encoding="utf-8") as file:
+        json.dump(
+            model_performance,
+            file,
+            indent=4,
+            ensure_ascii=False
+        )
+
+    print(f"Đã lưu Model Performance: {performance_path}")
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="Train custom Random Forest model for Churn")

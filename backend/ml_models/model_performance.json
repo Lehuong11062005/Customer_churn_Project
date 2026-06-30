@@ -1,0 +1,122 @@
+{
+    "accuracy": 0.7913413768630234,
+    "precision": 0.5943396226415094,
+    "recall": 0.6737967914438503,
+    "f1_score": 0.631578947368421,
+    "oob_score": 0.7888765294771969,
+    "confusion_matrix": {
+        "true_negative": 863,
+        "false_positive": 172,
+        "false_negative": 122,
+        "true_positive": 252
+    },
+    "feature_importance": [
+        {
+            "feature": "Total Charges",
+            "importance": 0.160892883515013
+        },
+        {
+            "feature": "Tenure Months",
+            "importance": 0.143005235974769
+        },
+        {
+            "feature": "Monthly Charges",
+            "importance": 0.12998025031140412
+        },
+        {
+            "feature": "CLTV",
+            "importance": 0.12055325936056983
+        },
+        {
+            "feature": "Dependents_Yes",
+            "importance": 0.04503108511376868
+        },
+        {
+            "feature": "Contract_Two year",
+            "importance": 0.03143646953601511
+        },
+        {
+            "feature": "Internet Service_Fiber optic",
+            "importance": 0.031272175577002174
+        },
+        {
+            "feature": "Gender_Male",
+            "importance": 0.02827314879160328
+        },
+        {
+            "feature": "Partner_Yes",
+            "importance": 0.026265899380427924
+        },
+        {
+            "feature": "Payment Method_Electronic check",
+            "importance": 0.026201693485012334
+        },
+        {
+            "feature": "Paperless Billing_Yes",
+            "importance": 0.02495121599652216
+        },
+        {
+            "feature": "Contract_One year",
+            "importance": 0.024646289991783213
+        },
+        {
+            "feature": "Online Security_Yes",
+            "importance": 0.024036201076436697
+        },
+        {
+            "feature": "Online Backup_Yes",
+            "importance": 0.023209653542805287
+        },
+        {
+            "feature": "Tech Support_Yes",
+            "importance": 0.02130534569224873
+        },
+        {
+            "feature": "Multiple Lines_Yes",
+            "importance": 0.0202619185275197
+        },
+        {
+            "feature": "Streaming Movies_Yes",
+            "importance": 0.01814868877540037
+        },
+        {
+            "feature": "Senior Citizen_Yes",
+            "importance": 0.01770609770244311
+        },
+        {
+            "feature": "Streaming TV_Yes",
+            "importance": 0.017106766808074436
+        },
+        {
+            "feature": "Internet Service_No",
+            "importance": 0.014852364093974722
+        },
+        {
+            "feature": "Payment Method_Mailed check",
+            "importance": 0.014061122671076226
+        },
+        {
+            "feature": "Device Protection_Yes",
+            "importance": 0.013117902569773266
+        },
+        {
+            "feature": "Payment Method_Credit card (automatic)",
+            "importance": 0.012873441992821866
+        },
+        {
+            "feature": "Phone Service_Yes",
+            "importance": 0.010810889513534865
+        }
+    ],
+    "model_information": {
+        "algorithm": "Custom Random Forest",
+        "n_estimators": 200,
+        "max_depth": 7,
+        "min_sample": 9,
+        "max_feature": null,
+        "random_state": 42,
+        "train_samples": 4495,
+        "test_samples": 1409,
+        "feature_count": 24
+    }
+}

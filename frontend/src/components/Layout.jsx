@@ -14,6 +14,7 @@ export default function Layout({ children }) {
     const baseItems = [
       { label: 'Dashboard', path: '/', icon: '📊' },
       { label: 'Customers', path: '/customers', icon: '👥' },
+      { label: 'Model Performance', path: '/model-performance', icon: '🤖' },
     ];
 
     if (user?.role === 'admin' || user?.role === 'manager') {

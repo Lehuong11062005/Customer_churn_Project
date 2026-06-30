@@ -11,7 +11,7 @@ from app.crud.crud_user import get_user_by_username
 from app.db.base import Base
 from app.db.database import SessionLocal, engine
 from app.models.user import User
-
+from app.api.routes import model_performance
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -34,7 +34,7 @@ app.include_router(customers.router)
 app.include_router(predict.router)
 app.include_router(dashboard.router)
 app.include_router(users.router)
-
+app.include_router(model_performance.router)
 
 @app.on_event("startup")
 def startup_event() -> None:

@@ -13,6 +13,8 @@ import Profile from './pages/Profile/Profile';
 import ChangePassword from './pages/Profile/ChangePassword';
 import NotFound from './pages/NotFound';
 import Unauthorized from './pages/Unauthorized';
+import ModelPerformance from "./pages/ModelPerformance/ModelPerformance";
+
 
 function AppRoutes() {
   const { token } = useAuth();
@@ -38,6 +40,7 @@ function AppRoutes() {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
         <Route path="/unauthorized" element={<Unauthorized />} />
+        <Route path="/model-performance" element={<ModelPerformance />}/>
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>

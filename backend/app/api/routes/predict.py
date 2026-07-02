@@ -22,16 +22,16 @@ def evaluate_prediction(payload: PredictRequest, current_user: User = Depends(ge
     
     # Phân loại risk_level đồng bộ với kết quả dự đoán rời mạng (ngưỡng 50)
     if score >= 75:
-        risk_level = "high"
+        risk_level = "High"
     elif score >= 50:
-        risk_level = "medium"
+        risk_level = "Medium"
     else:
-        risk_level = "low"
+        risk_level = "Low"
         
     logger.debug(f"Prediction made by {current_user.username}: score={score}, risk_level={risk_level}")
     
     return {
-        "churn_prediction": 1 if score >= 50 else 0, 
+        "churn_prediction": "Yes" if score >= 50 else "No", 
         "churn_probability": round(score / 100, 4), 
         "risk_level": risk_level
     }

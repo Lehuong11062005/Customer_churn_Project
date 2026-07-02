@@ -1,83 +1,124 @@
-import os
 import pickle
-import numpy as np
 from pathlib import Path
 from typing import Any, Dict
+
+import numpy as np
+import pandas as pd
 
 from .Forest import RandomForest
 
 MODEL_DIR = Path(__file__).resolve().parent.parent.parent / "ml_models"
 MODEL_PATH = MODEL_DIR / "rf_churn_model.pkl"
 
-def load_model() -> Any:
+COLUMN_MAP = {
+    "customer_id": "CustomerID",
+    "gender": "Gender",
+    "senior_citizen": "Senior Citizen",
+    "partner": "Partner",
+    "dependents": "Dependents",
+    "tenure_months": "Tenure Months",
+    "phone_service": "Phone Service",
+    "multiple_lines": "Multiple Lines",
+    "internet_service": "Internet Service",
+    "online_security": "Online Security",
+    "online_backup": "Online Backup",
+    "device_protection": "Device Protection",
+    "tech_support": "Tech Support",
+    "streaming_tv": "Streaming TV",
+    "streaming_movies": "Streaming Movies",
+    "contract": "Contract",
+    "paperless_billing": "Paperless Billing",
+    "payment_method": "Payment Method",
+    "monthly_charges": "Monthly Charges",
+    "total_charges": "Total Charges",
+    "cltv": "CLTV",
+    "city": "City",
+    "state": "State",
+    "zip_code": "Zip Code",
+    "country": "Country",
+    "churn_label": "Churn Label",
+    "churn_reason": "Churn Reason",
+}
+
+LEAKAGE_COLUMNS = [
+    "Churn Value",
+    "Churn Score",
+    "Churn Reason",
+    "CustomerID",
+    "City",
+    "Zip Code",
+    "Latitude",
+    "Longitude",
+    "Lat Long",
+    "Count",
+    "Country",
+    "State",
+    "Churn Label",
+]
+
+
+def load_model() -> Dict[str, Any]:
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Không tìm thấy file mô hình tại {MODEL_PATH}")
-    
+
     with open(MODEL_PATH, "rb") as handle:
         saved_package = pickle.load(handle)
-        return saved_package['model'] 
 
-MODEL = load_model()
+    if "feature_names" not in saved_package:
+        raise ValueError("Saved model package must include feature_names. Retrain model with updated train_model.py.")
 
-def preprocess_payload_to_features(data: Dict[str, Any]) -> list:
-    """
-    Hàm này chuyển đổi dữ liệu Pydantic Schema (snake_case, raw string)
-    sang danh sách 24 features (One-hot encoded) khớp 100% với lúc train.
-    """
-    # 1. Lấy các giá trị số cơ bản (chú ý key phải giống hệt trong Schema)
-    tenure = data.get("tenure_months") or 0
-    monthly_charges = data.get("monthly_charges") or 0.0
-    total_charges = data.get("total_charges") or 0.0
-    cltv = data.get("cltv", 0.0) # Nếu trong schema không có cltv, mặc định là 0.0
+    return saved_package
 
-    # 2. Xử lý One-Hot Encoding cho các biến phân loại (Categorical)
-    gender_male = 1 if data.get("gender") == "Male" else 0
-    senior_citizen = 1 if data.get("senior_citizen") == 1 else 0
-    partner_yes = 1 if data.get("partner") == "Yes" else 0
-    dependents_yes = 1 if data.get("dependents") == "Yes" else 0
-    phone_yes = 1 if data.get("phone_service") == "Yes" else 0
-    multiple_lines_yes = 1 if data.get("multiple_lines") == "Yes" else 0
-    
-    internet_fiber = 1 if data.get("internet_service") == "Fiber optic" else 0
-    internet_no = 1 if data.get("internet_service") == "No" else 0
-    
-    security_yes = 1 if data.get("online_security") == "Yes" else 0
-    backup_yes = 1 if data.get("online_backup") == "Yes" else 0
-    protection_yes = 1 if data.get("device_protection") == "Yes" else 0
-    tech_yes = 1 if data.get("tech_support") == "Yes" else 0
-    stream_tv_yes = 1 if data.get("streaming_tv") == "Yes" else 0
-    stream_movies_yes = 1 if data.get("streaming_movies") == "Yes" else 0
-    
-    contract_one = 1 if data.get("contract") == "One year" else 0
-    contract_two = 1 if data.get("contract") == "Two year" else 0
-    
-    paperless_yes = 1 if data.get("paperless_billing") == "Yes" else 0
-    
-    pay_credit = 1 if data.get("payment_method") == "Credit card (automatic)" else 0
-    pay_electronic = 1 if data.get("payment_method") == "Electronic check" else 0
-    pay_mailed = 1 if data.get("payment_method") == "Mailed check" else 0
+SAVED_PACKAGE = load_model()
+MODEL = SAVED_PACKAGE["model"]
+FEATURE_NAMES = SAVED_PACKAGE["feature_names"]
+TRAINING_COLUMNS = SAVED_PACKAGE.get("training_columns", [])
 
-    # 3. Trả về đúng thứ tự 24 features
-    return [
-        tenure, monthly_charges, total_charges, cltv,
-        gender_male, senior_citizen, partner_yes, dependents_yes,
-        phone_yes, multiple_lines_yes, internet_fiber, internet_no,
-        security_yes, backup_yes, protection_yes, tech_yes,
-        stream_tv_yes, stream_movies_yes, contract_one, contract_two,
-        paperless_yes, pay_credit, pay_electronic, pay_mailed
+
+def preprocess_payload_to_features(data: Dict[str, Any]) -> np.ndarray:
+    payload_df = pd.DataFrame([data])
+    payload_df = payload_df.rename(columns=COLUMN_MAP)
+
+    if TRAINING_COLUMNS:
+        payload_df = payload_df.reindex(columns=TRAINING_COLUMNS, fill_value=pd.NA)
+
+    numeric_columns = [
+        "Tenure Months",
+        "Monthly Charges",
+        "Total Charges",
+        "CLTV",
+        "Senior Citizen",
     ]
+    for column in numeric_columns:
+        if column in payload_df.columns:
+            payload_df[column] = pd.to_numeric(payload_df[column], errors="coerce").fillna(0)
 
-def predict_churn(data: Dict[str, Any]) -> float:
-    # Lấy features đã được chuẩn hóa từ payload
+    payload_df = payload_df.drop(columns=[c for c in LEAKAGE_COLUMNS if c in payload_df.columns], errors="ignore")
+
+    X = pd.get_dummies(payload_df, drop_first=True, dtype=int)
+
+    useless_dummies = [
+        c for c in X.columns
+        if "No internet service" in c
+        or "No phone service" in c
+    ]
+    if useless_dummies:
+        X = X.drop(columns=useless_dummies, errors="ignore")
+
+    X = X.reindex(columns=FEATURE_NAMES, fill_value=0)
+
+    print(f"Prediction feature count: {X.shape[1]}")
+    print(f"Prediction feature names: {list(X.columns)}")
+
+    return X.to_numpy()
+
+def predict_churn(data):
     features = preprocess_payload_to_features(data)
-    
-    # Debug: In ra để kiểm tra mảng đã có số thực sự chưa
-    print("=== MẢNG FEATURES ĐƯA VÀO MODEL SAU KHI FIX ===")
-    print(features)
-    
-    X_new = np.array([features])
-    
-    proba = MODEL.predict_proba(X_new)
+
+    print(features.shape)
+
+    proba = MODEL.predict_proba(features)
+
     probability = float(proba[0][1])
-    
+
     return round(probability * 100, 2)

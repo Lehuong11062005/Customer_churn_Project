@@ -85,7 +85,9 @@ def update_customer_record(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
     payload_dict = payload.model_dump(exclude_unset=True)
     if payload_dict:
-        payload_dict["churn_score"] = predict_churn(payload_dict)
+        customer_data = {**customer.__dict__}
+        customer_data.update(payload_dict)
+        payload_dict["churn_score"] = predict_churn(customer_data)
     customer = update_customer(db, customer, payload_dict)
     logger.info(f"Customer updated: {customer_id} with new churn_score: {customer.churn_score} by {current_user.username}")
     return {"message": "Updated", "data": customer}

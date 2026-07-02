@@ -27,6 +27,7 @@ class Customer(Base):
     payment_method = Column(String(50), nullable=True)
     monthly_charges = Column(Float, nullable=True)
     total_charges = Column(Float, nullable=True)
+    cltv = Column(Float, nullable=True)
     churn_label = Column(String(10), nullable=True)
     churn_reason = Column(Text, nullable=True)
     churn_score = Column(Float, nullable=True)

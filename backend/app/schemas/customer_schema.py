@@ -24,6 +24,7 @@ class CustomerBase(BaseModel):
     payment_method: Optional[str] = None
     monthly_charges: Optional[float] = None
     total_charges: Optional[float] = None
+    cltv: Optional[float] = None
     churn_label: Optional[str] = None
     churn_reason: Optional[str] = None
     city: Optional[str] = None

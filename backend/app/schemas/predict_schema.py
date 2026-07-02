@@ -8,6 +8,6 @@ class PredictRequest(BaseModel):
 
 
 class PredictResponse(BaseModel):
-    churn_prediction: int
+    churn_prediction: str
     churn_probability: float
     risk_level: str

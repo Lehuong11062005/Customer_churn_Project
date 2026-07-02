@@ -27,6 +27,7 @@ const initialState = {
   state: 'Unknown',
   zip_code: '00000',
   country: 'US',
+  cltv: 0.0,
 };
 
 export default function CustomerCreate() {
@@ -38,7 +39,7 @@ export default function CustomerCreate() {
     
     // Ép kiểu tự động sang số (number) đối với các trường dạng số
     let parsedValue = value;
-    if (['tenure_months', 'monthly_charges', 'total_charges'].includes(name)) {
+    if (['tenure_months', 'monthly_charges', 'total_charges', 'cltv'].includes(name)) {
       parsedValue = value === '' ? '' : Number(value);
     } else if (name === 'senior_citizen') {
       parsedValue = Number(value);
@@ -239,6 +240,17 @@ export default function CustomerCreate() {
               className="w-full rounded border px-3 py-2" 
               name="total_charges" 
               value={form.total_charges} 
+              onChange={handleChange} 
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">CLTV</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              className="w-full rounded border px-3 py-2" 
+              name="cltv" 
+              value={form.cltv} 
               onChange={handleChange} 
             />
           </div>

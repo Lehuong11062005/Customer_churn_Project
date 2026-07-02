@@ -14,6 +14,7 @@ def preprocess_data(file_path):
 
     # Chuẩn hóa tên cột
     df.columns = df.columns.str.strip()
+    raw_columns = list(df.columns)
 
     # =====================================================
     # 2. TÌM CỘT NHÃN
@@ -128,9 +129,12 @@ def preprocess_data(file_path):
     # 9. GHÉP LẠI
     # =====================================================
     df_final = pd.concat([X, y], axis=1)
+    feature_names = list(X.columns)
 
     return (
         df_final,
         {target_col: le_target},
-        target_col
+        target_col,
+        feature_names,
+        raw_columns
     )

@@ -22,8 +22,8 @@ def train_and_save_model(data_path: str, output_path: str):
     print("1. Đang đọc và tiền xử lý dữ liệu...")
     
     # 1. Gọi file preprocessing của bạn
-    # Lưu ý: file preprocessing.py của bạn đã tự động xóa các cột leakage ('Churn Value', 'Churn Score',...) 
-    df_final, le_target, target_col = preprocess_data(data_path)
+    # Lưu ý: file preprocessing.py của bạn đã tự động xóa các cột leakage ('Churn Value', 'Churn Score',...)
+    df_final, le_target, target_col, feature_names, training_columns = preprocess_data(data_path)
     
     # 2. Tách X và y
     y_df = df_final[target_col]
@@ -115,7 +115,9 @@ def train_and_save_model(data_path: str, output_path: str):
         'model': rf_model,
         'X_test': X_test,
         'y_test': y_test,
-        'feature_names': feature_names
+        'feature_names': feature_names,
+        'label_encoder': le_target,
+        'training_columns': training_columns,
     }
     
     out_path = Path(output_path)
